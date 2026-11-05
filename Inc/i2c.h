@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * <h2><center>&copy; Copyright (c) 2019 STMicroelectronics.
+  * <h2><center>&copy; Copyright (c) 2026 STMicroelectronics.
   * All rights reserved.</center></h2>
   *
   * This software component is licensed by ST under BSD 3-Clause license,
@@ -35,6 +35,7 @@
 /* USER CODE END Private defines */
 
 void MX_I2C1_Init(void);
+
 /* USER CODE BEGIN Prototypes */
 uint8_t i2c_master_read_byte(uint8_t slave_address, uint8_t register_address);
 /* USER CODE END Prototypes */

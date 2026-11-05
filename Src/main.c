@@ -21,40 +21,100 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "i2c.h"
+#include "usart.h"
 #include "gpio.h"
 
-// I2C slave device useful information
-#define 	LSM6DS0_DEVICE_ADDRESS		0xD6U
-#define 	LSM6DS0_WHO_AM_I_VALUE		0x68U
-#define 	LSM6DS0_WHO_AM_I_ADDRES		0x0FU
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
 
+/* USER CODE END Includes */
 
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+
+/* USER CODE BEGIN PV */
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+/* USER CODE BEGIN PFP */
 
+/* USER CODE END PFP */
 
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
 int main(void)
 {
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
+  /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+
   LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
   LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
 
   NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
+  /* System interrupt init*/
+
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
   SystemClock_Config();
 
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_I2C1_Init();
+  MX_USART2_UART_Init();
+  /* USER CODE BEGIN 2 */
 
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  if(i2c_master_read_byte(LSM6DS0_DEVICE_ADDRESS, LSM6DS0_WHO_AM_I_ADDRES) == LSM6DS0_WHO_AM_I_VALUE)
-	  {
-		  LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_3);
-	  }
+    /* USER CODE END WHILE */
 
-	  LL_mDelay(100);
+    /* USER CODE BEGIN 3 */
+    /* Test CSV values: temperature, humidity, pressure, relative height. */
+    UART_SendString("23.5,48,1013.25,0.8\r\n");
+    LL_mDelay(1000);
+
   }
+  /* USER CODE END 3 */
 }
-
 
 /**
   * @brief System Clock Configuration
@@ -66,14 +126,14 @@ void SystemClock_Config(void)
 
   if(LL_FLASH_GetLatency() != LL_FLASH_LATENCY_0)
   {
-  Error_Handler();  
+  Error_Handler();
   }
   LL_RCC_HSI_Enable();
 
    /* Wait till HSI is ready */
   while(LL_RCC_HSI_IsReady() != 1)
   {
-    
+
   }
   LL_RCC_HSI_SetCalibTrimming(16);
   LL_RCC_SetAHBPrescaler(LL_RCC_SYSCLK_DIV_1);
@@ -84,7 +144,7 @@ void SystemClock_Config(void)
    /* Wait till System clock is ready */
   while(LL_RCC_GetSysClkSource() != LL_RCC_SYS_CLKSOURCE_STATUS_HSI)
   {
-  
+
   }
   LL_Init1msTick(8000000);
   LL_SYSTICK_SetClkSource(LL_SYSTICK_CLKSOURCE_HCLK);
@@ -92,6 +152,9 @@ void SystemClock_Config(void)
   LL_RCC_SetI2CClockSource(LL_RCC_I2C1_CLKSOURCE_HSI);
 }
 
+/* USER CODE BEGIN 4 */
+
+/* USER CODE END 4 */
 
 /**
   * @brief  This function is executed in case of error occurrence.
@@ -114,7 +177,7 @@ void Error_Handler(void)
   * @retval None
   */
 void assert_failed(char *file, uint32_t line)
-{ 
+{
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
