@@ -26,7 +26,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "hts221.h"
+#include "lps22hb.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,7 +49,12 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+static HTS221 humidity_sensor;
+static LPS22HB pressure_sensor;
+static const SensorBus sensor_bus = { I2C_ReadRegisters, I2C_WriteRegisters, LL_mDelay };
+static int sensors_ready;
+static float reference_pressure;
+static char uart_line[128];
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,7 +105,9 @@ int main(void)
   MX_I2C1_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  LL_I2C_Enable(I2C1);
+  LL_mDelay(100);
+  UART_SendString("# HTS221 + LPS22HB: temperature[C],humidity[%],pressure[hPa],height[m]\r\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -108,10 +117,36 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    /* Test CSV values: temperature, humidity, pressure, relative height. */
-    UART_SendString("23.5,48,1013.25,0.8\r\n");
+    if (!sensors_ready) {
+        int h = HTS221_Init(&humidity_sensor, &sensor_bus);
+        int p = LPS22HB_Init(&pressure_sensor, &sensor_bus);
+        if (h || p) {
+            snprintf(uart_line, sizeof(uart_line), "# INIT ERROR HTS221=%d LPS22HB=%d\r\n", h, p);
+            UART_SendString(uart_line);
+            LL_mDelay(1000);
+            continue;
+        }
+        sensors_ready = 1;
+        reference_pressure = 0;
+        UART_SendString("# Sensors detected. Height zero is the first valid pressure.\r\n");
+    }
+    float temperature, humidity, pressure;
+    int h = HTS221_Measure(&humidity_sensor);
+    if (!h) h = HTS221_ReadTemperature(&humidity_sensor, &temperature);
+    if (!h) h = HTS221_ReadHumidity(&humidity_sensor, &humidity);
+    int p = LPS22HB_ReadPressure(&pressure_sensor, &pressure);
+    if (h || p) {
+        snprintf(uart_line, sizeof(uart_line), "# READ ERROR HTS221=%d LPS22HB=%d\r\n", h, p);
+        UART_SendString(uart_line);
+        sensors_ready = 0;
+    } else {
+        if (reference_pressure == 0) reference_pressure = pressure;
+        float height = LPS22HB_RelativeHeight(pressure, reference_pressure);
+        snprintf(uart_line, sizeof(uart_line), "%.1f,%.0f,%.2f,%.2f\r\n",
+                 (double)temperature, (double)humidity, (double)pressure, (double)height);
+        UART_SendString(uart_line);
+    }
     LL_mDelay(1000);
-
   }
   /* USER CODE END 3 */
 }
