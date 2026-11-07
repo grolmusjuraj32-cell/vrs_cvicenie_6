@@ -37,7 +37,9 @@
 void MX_I2C1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
-uint8_t i2c_master_read_byte(uint8_t slave_address, uint8_t register_address);
+/* 7-bit addresses; one transaction supports 1..254 data bytes. */
+int I2C_ReadRegisters(uint8_t address, uint8_t reg, uint8_t *data, uint16_t length);
+int I2C_WriteRegisters(uint8_t address, uint8_t reg, const uint8_t *data, uint16_t length);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

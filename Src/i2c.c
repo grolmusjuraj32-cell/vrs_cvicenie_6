@@ -71,7 +71,70 @@ void MX_I2C1_Init(void)
 }
 
 /* USER CODE BEGIN 1 */
-
+/* Bounded polling: this driver does not enable I2C peripheral interrupts. */
+static int wait_flag(uint32_t flag)
+{
+    uint32_t budget = SystemCoreClock / 10U;
+    while (budget--) {
+        uint32_t status = I2C1->ISR;
+        if (status & (I2C_ISR_NACKF | I2C_ISR_BERR | I2C_ISR_ARLO | I2C_ISR_OVR)) return -1;
+        if (status & flag) return 0;
+        if (status & I2C_ISR_STOPF) return -1;
+    }
+    return -2;
+}
+static int finish_transfer(int result)
+{
+    if (result) {
+        /* PE reset aborts an incomplete transfer without an unbounded STOP wait. */
+        LL_I2C_Disable(I2C1);
+        LL_I2C_Enable(I2C1);
+    }
+    I2C1->ICR = I2C_ICR_STOPCF | I2C_ICR_NACKCF | I2C_ICR_BERRCF |
+                I2C_ICR_ARLOCF | I2C_ICR_OVRCF;
+    return result;
+}
+static int start_transfer(void)
+{
+    LL_I2C_Enable(I2C1);
+    uint32_t budget = SystemCoreClock / 10U;
+    while (LL_I2C_IsActiveFlag_BUSY(I2C1))
+        if (!budget--) return finish_transfer(-2);
+    return finish_transfer(0);
+}
+int I2C_ReadRegisters(uint8_t address, uint8_t reg, uint8_t *data, uint16_t length)
+{
+    int result;
+    if (!data || !length || length > 254 || address > 0x7F) return -3;
+    if ((result = start_transfer())) return result;
+    LL_I2C_HandleTransfer(I2C1, (uint32_t)address << 1, LL_I2C_ADDRSLAVE_7BIT,
+                         1, LL_I2C_MODE_SOFTEND, LL_I2C_GENERATE_START_WRITE);
+    if ((result = wait_flag(I2C_ISR_TXIS))) return finish_transfer(result);
+    LL_I2C_TransmitData8(I2C1, reg);
+    if ((result = wait_flag(I2C_ISR_TC))) return finish_transfer(result);
+    LL_I2C_HandleTransfer(I2C1, (uint32_t)address << 1, LL_I2C_ADDRSLAVE_7BIT,
+                         length, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_READ);
+    for (uint16_t i = 0; i < length; ++i) {
+        if ((result = wait_flag(I2C_ISR_RXNE))) return finish_transfer(result);
+        data[i] = LL_I2C_ReceiveData8(I2C1);
+    }
+    return finish_transfer(wait_flag(I2C_ISR_STOPF));
+}
+int I2C_WriteRegisters(uint8_t address, uint8_t reg, const uint8_t *data, uint16_t length)
+{
+    int result;
+    if (!data || !length || length > 254 || address > 0x7F) return -3;
+    if ((result = start_transfer())) return result;
+    LL_I2C_HandleTransfer(I2C1, (uint32_t)address << 1, LL_I2C_ADDRSLAVE_7BIT,
+                         length + 1U, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_WRITE);
+    if ((result = wait_flag(I2C_ISR_TXIS))) return finish_transfer(result);
+    LL_I2C_TransmitData8(I2C1, reg);
+    for (uint16_t i = 0; i < length; ++i) {
+        if ((result = wait_flag(I2C_ISR_TXIS))) return finish_transfer(result);
+        LL_I2C_TransmitData8(I2C1, data[i]);
+    }
+    return finish_transfer(wait_flag(I2C_ISR_STOPF));
+}
 /* USER CODE END 1 */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
